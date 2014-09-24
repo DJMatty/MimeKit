@@ -370,6 +370,19 @@ namespace MimeKit {
 			get { return addresses["To"]; }
 		}
 
+	    public IEnumerable<string> SkippedTo
+	    {
+	        get
+	        {
+	            InternetAddressList list;
+	            return
+	                Headers
+	                    .Where(h => h.Id == HeaderId.To)
+	                    .SelectMany(h => InternetAddressList.TryParse(h.RawValue, out list) ? list.SkippedAddresses : new string[] {})
+	                    .ToArray();
+	        }
+	    } 
+
 		/// <summary>
 		/// Gets the list of addresses in the Resent-To header.
 		/// </summary>
@@ -394,6 +407,19 @@ namespace MimeKit {
 		public InternetAddressList Cc {
 			get { return addresses["Cc"]; }
 		}
+
+        public IEnumerable<string> SkippedCc
+        {
+            get
+            {
+                InternetAddressList list;
+                return
+                    Headers
+                        .Where(h => h.Id == HeaderId.To)
+                        .SelectMany(h => InternetAddressList.TryParse(h.RawValue, out list) ? list.SkippedAddresses : new string[] { })
+                        .ToArray();
+            }
+        } 
 
 		/// <summary>
 		/// Gets the list of addresses in the Resent-Cc header.
