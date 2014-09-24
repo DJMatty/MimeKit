@@ -1298,7 +1298,8 @@ namespace MimeKit {
 			int index = 0;
 
 			// parse the addresses in the new header and add them to our address list
-			if (!InternetAddressList.TryParse (Headers.Options, header.RawValue, ref index, length, false, false, out parsed))
+		    IEnumerable<string> skipped;
+			if (!InternetAddressList.TryParse (Headers.Options, header.RawValue, ref index, length, false, false, out parsed, out skipped))
 				return;
 
 			list.Changed -= InternetAddressListChanged;
@@ -1318,9 +1319,10 @@ namespace MimeKit {
 
 				int length = header.RawValue.Length;
 				List<InternetAddress> parsed;
+			    IEnumerable<string> skipped;
 				int index = 0;
 
-				if (!InternetAddressList.TryParse (Headers.Options, header.RawValue, ref index, length, false, false, out parsed))
+				if (!InternetAddressList.TryParse (Headers.Options, header.RawValue, ref index, length, false, false, out parsed, out skipped))
 					continue;
 
 				list.AddRange (parsed);

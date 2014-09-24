@@ -54,7 +54,14 @@ namespace MimeKit {
 	{
 		readonly List<InternetAddress> list = new List<InternetAddress> ();
 
-		/// <summary>
+        readonly List<string> skippedAddresses = new List<string>();
+
+	    public IEnumerable<string> SkippedAddresses
+	    {
+	        get { return skippedAddresses; }
+	    }
+
+	    /// <summary>
 		/// Initializes a new instance of the <see cref="MimeKit.InternetAddressList"/> class.
 		/// </summary>
 		/// <remarks>
@@ -74,6 +81,23 @@ namespace MimeKit {
 				list.Add (address);
 			}
 		}
+
+        public InternetAddressList(IEnumerable<InternetAddress> addresses, IEnumerable<string> skipped)
+        {
+            if (addresses == null)
+                throw new ArgumentNullException("addresses");
+
+            foreach (var address in addresses)
+            {
+                address.Changed += AddressChanged;
+                list.Add(address);
+            }
+
+            if (skipped != null)
+            {
+                skippedAddresses.AddRange(skipped);
+            }
+        }
 
 		/// <summary>
 		/// Initializes a new instance of the <see cref="MimeKit.InternetAddressList"/> class.
@@ -500,11 +524,13 @@ namespace MimeKit {
 			OnChanged ();
 		}
 
-		internal static bool TryParse (ParserOptions options, byte[] text, ref int index, int endIndex, bool isGroup, bool throwOnError, out List<InternetAddress> addresses)
+        internal static bool TryParse(ParserOptions options, byte[] text, ref int index, int endIndex, bool isGroup, bool throwOnError, out List<InternetAddress> addresses, out IEnumerable<string> skipped)
 		{
 			List<InternetAddress> list = new List<InternetAddress> ();
+            var skippedList = new List<string>();
 			InternetAddress address;
 
+            skipped = new List<string>();
 			addresses = null;
 
 			if (!ParseUtils.SkipCommentsAndWhiteSpace (text, ref index, endIndex, throwOnError))
@@ -517,7 +543,10 @@ namespace MimeKit {
 				return false;
 			}
 
-			while (index < endIndex) {
+			while (index < endIndex)
+			{
+			    var startIndex = index;
+
 				if (isGroup && text[index] == (byte) ';')
 					break;
 
@@ -525,6 +554,9 @@ namespace MimeKit {
 					// skip this address...
 					while (index < endIndex && text[index] != (byte) ',' && (!isGroup || text[index] != (byte) ';'))
 						index++;
+
+				    skippedList.Add(Encoding.UTF8.GetString(text, startIndex, index - startIndex));
+
 				} else {
 					list.Add (address);
 				}
@@ -542,6 +574,7 @@ namespace MimeKit {
 			}
 
 			addresses = list;
+            skipped = skippedList;
 
 			return true;
 		}
@@ -583,14 +616,16 @@ namespace MimeKit {
 				throw new ArgumentOutOfRangeException ("length");
 
 			List<InternetAddress> addrlist;
+		    IEnumerable<string> skipped;
+
 			int index = startIndex;
 
-			if (!TryParse (options, buffer, ref index, startIndex + length, false, false, out addrlist)) {
+			if (!TryParse (options, buffer, ref index, startIndex + length, false, false, out addrlist, out skipped)) {
 				addresses = null;
 				return false;
 			}
 
-			addresses = new InternetAddressList (addrlist);
+			addresses = new InternetAddressList (addrlist, skipped);
 
 			return true;
 		}
@@ -651,13 +686,14 @@ namespace MimeKit {
 
 			List<InternetAddress> addrlist;
 			int index = startIndex;
+		    IEnumerable<string> skipped;
 
-			if (!TryParse (options, buffer, ref index, buffer.Length, false, false, out addrlist)) {
+			if (!TryParse (options, buffer, ref index, buffer.Length, false, false, out addrlist, out skipped)) {
 				addresses = null;
 				return false;
 			}
 
-			addresses = new InternetAddressList (addrlist);
+			addresses = new InternetAddressList (addrlist, skipped);
 
 			return true;
 		}
@@ -707,14 +743,15 @@ namespace MimeKit {
 				throw new ArgumentNullException ("buffer");
 
 			List<InternetAddress> addrlist;
+		    IEnumerable<string> skipped;
 			int index = 0;
 
-			if (!TryParse (options, buffer, ref index, buffer.Length, false, false, out addrlist)) {
+			if (!TryParse (options, buffer, ref index, buffer.Length, false, false, out addrlist, out skipped)) {
 				addresses = null;
 				return false;
 			}
 
-			addresses = new InternetAddressList (addrlist);
+			addresses = new InternetAddressList (addrlist, skipped);
 
 			return true;
 		}
@@ -751,7 +788,7 @@ namespace MimeKit {
 		/// <para>-or-</para>
 		/// <para><paramref name="text"/> is <c>null</c>.</para>
 		/// </exception>
-		public static bool TryParse (ParserOptions options, string text, out InternetAddressList addresses)
+        public static bool TryParse(ParserOptions options, string text, out InternetAddressList addresses)
 		{
 			if (options == null)
 				throw new ArgumentNullException ("options");
@@ -761,14 +798,15 @@ namespace MimeKit {
 
 			var buffer = Encoding.UTF8.GetBytes (text);
 			List<InternetAddress> addrlist;
+		    IEnumerable<string> skipped;
 			int index = 0;
 
-			if (!TryParse (options, buffer, ref index, buffer.Length, false, false, out addrlist)) {
+			if (!TryParse (options, buffer, ref index, buffer.Length, false, false, out addrlist, out skipped)) {
 				addresses = null;
 				return false;
 			}
 
-			addresses = new InternetAddressList (addrlist);
+			addresses = new InternetAddressList (addrlist, skipped);
 
 			return true;
 		}
@@ -785,7 +823,7 @@ namespace MimeKit {
 		/// <exception cref="System.ArgumentNullException">
 		/// <paramref name="text"/> is <c>null</c>.
 		/// </exception>
-		public static bool TryParse (string text, out InternetAddressList addresses)
+        public static bool TryParse(string text, out InternetAddressList addresses)
 		{
 			return TryParse (ParserOptions.Default, text, out addresses);
 		}
@@ -817,6 +855,7 @@ namespace MimeKit {
 		public static InternetAddressList Parse (ParserOptions options, byte[] buffer, int startIndex, int length)
 		{
 			List<InternetAddress> addrlist;
+		    IEnumerable<string> skipped;
 			int index = startIndex;
 
 			if (options == null)
@@ -831,9 +870,9 @@ namespace MimeKit {
 			if (length < 0 || length > (buffer.Length - startIndex))
 				throw new ArgumentOutOfRangeException ("length");
 
-			TryParse (options, buffer, ref index, startIndex + length, false, true, out addrlist);
+			TryParse (options, buffer, ref index, startIndex + length, false, true, out addrlist, out skipped);
 
-			return new InternetAddressList (addrlist);
+			return new InternetAddressList (addrlist, skipped);
 		}
 
 		/// <summary>
@@ -883,9 +922,10 @@ namespace MimeKit {
 		/// <exception cref="MimeKit.ParseException">
 		/// <paramref name="buffer"/> could not be parsed.
 		/// </exception>
-		public static InternetAddressList Parse (ParserOptions options, byte[] buffer, int startIndex)
+        public static InternetAddressList Parse(ParserOptions options, byte[] buffer, int startIndex)
 		{
 			List<InternetAddress> addrlist;
+		    IEnumerable<string> skipped;
 			int index = startIndex;
 
 			if (options == null)
@@ -897,9 +937,9 @@ namespace MimeKit {
 			if (startIndex < 0 || startIndex > buffer.Length)
 				throw new ArgumentOutOfRangeException ("startIndex");
 
-			TryParse (options, buffer, ref index, buffer.Length, false, true, out addrlist);
+			TryParse (options, buffer, ref index, buffer.Length, false, true, out addrlist, out skipped);
 
-			return new InternetAddressList (addrlist);
+			return new InternetAddressList (addrlist, skipped);
 		}
 
 		/// <summary>
@@ -945,6 +985,7 @@ namespace MimeKit {
 		public static InternetAddressList Parse (ParserOptions options, byte[] buffer)
 		{
 			List<InternetAddress> addrlist;
+		    IEnumerable<string> skipped;
 			int index = 0;
 
 			if (options == null)
@@ -953,9 +994,9 @@ namespace MimeKit {
 			if (buffer == null)
 				throw new ArgumentNullException ("buffer");
 
-			TryParse (options, buffer, ref index, buffer.Length, false, true, out addrlist);
+			TryParse (options, buffer, ref index, buffer.Length, false, true, out addrlist, out skipped);
 
-			return new InternetAddressList (addrlist);
+			return new InternetAddressList (addrlist, skipped);
 		}
 
 		/// <summary>
@@ -994,7 +1035,7 @@ namespace MimeKit {
 		/// <exception cref="MimeKit.ParseException">
 		/// <paramref name="text"/> could not be parsed.
 		/// </exception>
-		public static InternetAddressList Parse (ParserOptions options, string text)
+        public static InternetAddressList Parse(ParserOptions options, string text)
 		{
 			if (options == null)
 				throw new ArgumentNullException ("options");
@@ -1004,11 +1045,12 @@ namespace MimeKit {
 
 			var buffer = Encoding.UTF8.GetBytes (text);
 			List<InternetAddress> addrlist;
+		    IEnumerable<string> skipped;
 			int index = 0;
 
-			TryParse (options, buffer, ref index, buffer.Length, false, true, out addrlist);
+			TryParse (options, buffer, ref index, buffer.Length, false, true, out addrlist, out skipped);
 
-			return new InternetAddressList (addrlist);
+			return new InternetAddressList (addrlist, skipped);
 		}
 
 		/// <summary>

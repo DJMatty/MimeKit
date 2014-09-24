@@ -361,7 +361,9 @@ namespace MimeKit {
 				return false;
 			}
 
-			if (InternetAddressList.TryParse (options, text, ref index, endIndex, true, throwOnError, out members))
+		    IEnumerable<string> skippedAddresses;
+
+			if (InternetAddressList.TryParse (options, text, ref index, endIndex, true, throwOnError, out members, out skippedAddresses))
 				address = new GroupAddress (encoding, name, members);
 			else
 				address = new GroupAddress (encoding, name);
