@@ -18,7 +18,7 @@
     <DebugSymbols>True</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>False</Optimize>
-    <OutputPath>bin\Debug\lib\net40</OutputPath>
+    <OutputPath>bin\Debug\lib\net45\</OutputPath>
     <IntermediateOutputPath>obj\Debug\lib\net40</IntermediateOutputPath>
     <DefineConstants>DEBUG;TRACE;ENABLE_CRYPTO;ENABLE_SNM</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -28,13 +28,13 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <Optimize>True</Optimize>
-    <OutputPath>bin\Release\lib\net40</OutputPath>
+    <OutputPath>bin\Release\lib\net45\</OutputPath>
     <IntermediateOutputPath>obj\Release\lib\net40</IntermediateOutputPath>
     <DefineConstants>TRACE;ENABLE_CRYPTO;ENABLE_SNM</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DocumentationFile>bin\Release\lib\net40\MimeKit.xml</DocumentationFile>
+    <DocumentationFile>bin\Release\lib\net45\MimeKit.xml</DocumentationFile>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup>
